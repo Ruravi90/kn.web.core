@@ -35,49 +35,40 @@ namespace kn.web.core
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            // Adding Authentication  
+            // Adding Authentication
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-
-            // Adding Jwt Bearer  
+            // Adding Jwt Bearer
             .AddJwtBearer(options =>
             {
                 options.SaveToken = true;
                 options.RequireHttpsMetadata = false;
                 options.TokenValidationParameters = new TokenValidationParameters()
                 {
-                    // The signing key must match!
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(Configuration.GetSection("JWT:Secret").Value)),
-                    // Validate the JWT Issuer (iss) claim
-                    ValidateIssuer = true,
-                    ValidIssuer = Configuration.GetSection("JWT:Issuer").Value,
-                    // Validate the JWT Audience (aud) claim
-                    ValidateAudience = true,
-                    ValidAudience = Configuration.GetSection("JWT:Issuer").Value,
-                    // Validate the token expiry
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    RequireExpirationTime = false,
                     ValidateLifetime = true,
-                    // If you want to allow a certain amount of clock drift, set that here:
-                    ClockSkew = TimeSpan.Zero
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["JWT:Secret"]))
                 };
             });
 
-            services.AddDbContextPool<EFContext>(options =>
-                options.UseMySql(Configuration["ConnectionStrings:Default"],
-                ServerVersion.AutoDetect(Configuration["ConnectionStrings:Default"]))
-            );
-
-            services.AddControllers();
-            services.AddSwaggerGen(c =>
+            services.AddSwaggerGen(swagger =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "KN API", Version = "v1" });
-                // To Enable authorization using Swagger (JWT) 
-
-                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme()
+                //This is to generate the Default UI of Swagger Documentation    
+                swagger.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Version = "v1",
+                    Title = "ASP.NET 5 Web API",
+                    Description = "Authentication and Authorization in ASP.NET 5 with JWT and Swagger"
+                });
+                // To Enable authorization using Swagger (JWT)    
+                swagger.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme()
                 {
                     Name = "Authorization",
                     Type = SecuritySchemeType.ApiKey,
@@ -86,22 +77,29 @@ namespace kn.web.core
                     In = ParameterLocation.Header,
                     Description = "Enter 'Bearer' [space] and then your valid token in the text input below.\r\n\r\nExample: \"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\"",
                 });
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                swagger.AddSecurityRequirement(new OpenApiSecurityRequirement
                 {
                     {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
+                          new OpenApiSecurityScheme
                             {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            }
-                        },
-                        new string[] {}
+                                Reference = new OpenApiReference
+                                {
+                                    Type = ReferenceType.SecurityScheme,
+                                    Id = "Bearer"
+                                }
+                            },
+                            new string[] {}
+
                     }
                 });
             });
-        
+
+            services.AddDbContextPool<EFContext>(options =>
+                options.UseMySql(Configuration["ConnectionStrings:Default"],
+                ServerVersion.AutoDetect(Configuration["ConnectionStrings:Default"]))
+            );
+
+            services.AddControllers();
             services.AddSoapCore();
             services.AddTransient<IService, Service>();
 

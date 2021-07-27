@@ -33,6 +33,7 @@ namespace kn.web.core.Controllers
 
         // GET: api/Users
         [HttpGet]
+        [AdminAuthorize]
         public async Task<ActionResult<IEnumerable<User>>> GetUsers()
         {
             return await _context.Users.ToListAsync();
@@ -45,9 +46,17 @@ namespace kn.web.core.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUser(int id, User user)
         {
+            ClaimsIdentity claimsIdentity = HttpContext.User.Identity as ClaimsIdentity;
+            Claim idUser = claimsIdentity.Claims.Where(c => c.Type == "Id").FirstOrDefault();
+            Claim isAdmin = claimsIdentity.Claims.Where(c => c.Type == "IsAdmin").FirstOrDefault();
+
             if (id != user.Id)
             {
                 return BadRequest();
+            }
+
+            if (user.Id != Int32.Parse(idUser.Value) && isAdmin.Value != "1") {
+                return Unauthorized();
             }
 
             _context.Entry(user).State = EntityState.Modified;
@@ -74,6 +83,7 @@ namespace kn.web.core.Controllers
 
         // DELETE: api/Users/5
         [HttpDelete("{id}")]
+        [AdminAuthorize]
         public async Task<ActionResult<User>> DeleteUser(int id)
         {
             var user = await _context.Users.FindAsync(id);
@@ -108,6 +118,7 @@ namespace kn.web.core.Controllers
                     new Claim("Id", user.Id.ToString()),
                     new Claim("CorporateName", user.CorporateName),
                     new Claim("UserName", user.UserName),
+                    new Claim("IsAdmin", user.IsAdmin.ToString()),
                 };
 
 
@@ -129,9 +140,12 @@ namespace kn.web.core.Controllers
 
         [HttpPost]
         [Route("register")]
-        //[AllowAnonymous]
+        [AdminAuthorize]
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
         {
+
+            ClaimsIdentity claimsIdentity = User.Identity as ClaimsIdentity;
+
             var userExists = await _context.Users.Where(u => u.UserName == model.UserName).FirstOrDefaultAsync();
             if (userExists != null)
                 return StatusCode(StatusCodes.Status500InternalServerError, new Response { Status = "Error", Message = "User already exists!" });
