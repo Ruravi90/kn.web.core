@@ -1,8 +1,11 @@
 using kn.web.core.Models;
 using kn.web.core.Socket;
+using kn.web.core.Utils;
 using System;
+using System.IO;
 using System.Net;  
-using System.Net.Sockets;  
+using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;  
   
 namespace kn.web.core._Socket
@@ -37,15 +40,17 @@ namespace kn.web.core._Socket
     
             // Bind the socket to the local endpoint and
             // listen for incoming connections.  
-            try {  
-                listener.Bind(localEndPoint);  
-                listener.Listen(10);  
+             
+            listener.Bind(localEndPoint);  
+            listener.Listen(10);  
     
-                // Start listening for connections.  
-                while (true) {  
-                    Console.WriteLine("Waiting for a connection...");
-                    // Program is suspended while waiting for an incoming connection.  
-                    System.Net.Sockets.Socket handler = listener.Accept();  
+            // Start listening for connections.  
+            while (true) {  
+                Console.WriteLine("Waiting for a connection...");
+                // Program is suspended while waiting for an incoming connection.  
+                System.Net.Sockets.Socket handler = listener.Accept();
+                try
+                {
                     data = null;
 
                     // An incoming connection needs to be processed.  
@@ -65,25 +70,29 @@ namespace kn.web.core._Socket
                                     _context.SaveChanges();
                                 }
                             }
-                            catch (Exception e) { }
+                            catch (Exception e) {
+                                throw e;
+                            }
                         }
 
                         break;
-                    }  
-    
+                    }
+
                     // Show the data on the console.  
                     //Console.WriteLine( "Text received : {0}", data);  
                     // Echo the data back to the client.  
                     //byte[] msg = Encoding.ASCII.GetBytes(data);  
                     //handler.Send(msg);  
-                    handler.Shutdown(SocketShutdown.Both);  
-                    handler.Close();  
-                }  
-    
-            } catch (Exception e) {  
-                Console.WriteLine(e.ToString());  
+
+                } catch (Exception e)
+                {
+                    Utils.Utils util = new Utils.Utils();
+                    util.logError("logError.txt", e);
+                }
+
+                handler.Shutdown(SocketShutdown.Both);  
+                handler.Close();  
             }  
-    
         }  
     }  
 }
